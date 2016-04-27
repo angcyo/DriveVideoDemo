@@ -156,6 +156,27 @@ public class CameraInstance {
         return mCameraDevice != null;
     }
 
+    public synchronized void startPreview(SurfaceTexture texture, int degrees) {
+        Log.i(LOG_TAG, "Camera startPreview...");
+        if(mIsPreviewing) {
+            Log.e(LOG_TAG, "Err: camera is previewing...");
+//            stopPreview();
+            return ;
+        }
+
+        if(mCameraDevice != null) {
+            try {
+                mCameraDevice.setDisplayOrientation(degrees);
+                mCameraDevice.setPreviewTexture(texture);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mCameraDevice.startPreview();
+            mIsPreviewing = true;
+        }
+    }
+
     public synchronized void startPreview(SurfaceTexture texture) {
         Log.i(LOG_TAG, "Camera startPreview...");
         if(mIsPreviewing) {

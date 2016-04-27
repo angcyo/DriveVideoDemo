@@ -8,10 +8,9 @@ import android.view.View;
 import android.widget.FrameLayout;
 
 import org.wysaid.camera.CameraInstance;
-import org.wysaid.view.CameraGLSurfaceView;
 import org.wysaid.view.CameraRecordGLSurfaceView;
 
-public class MainActivity extends AppCompatActivity implements TextureView.SurfaceTextureListener {
+public class MainActivity2 extends AppCompatActivity implements TextureView.SurfaceTextureListener {
 
     TextureView mTextureView;
     CameraRecordGLSurfaceView mGLSurfaceView;
@@ -19,7 +18,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
     View rootLayout;
     FrameLayout mFrameLayout;
     int switchCount = 0;
-    private CameraInstance mCameraInstance;
+//    private CameraInstance mCameraInstance;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,7 +26,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
         setContentView(R.layout.activity_main);
 
         mFrameLayout = (FrameLayout) findViewById(R.id.frameLayout);
-//        mGLSurfaceView = (CameraRecordGLSurfaceView) findViewById(R.id.glSurfaceView);
+        mGLSurfaceView = (CameraRecordGLSurfaceView) findViewById(R.id.glSurfaceView);
 //        mGLSurfaceView.setOnSurfaceCreate(new CameraGLSurfaceView.OnSurfaceCreate() {
 //            @Override
 //            public void onSurfaceCreate() {
@@ -43,45 +42,53 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
 //        mTextureView.setLayoutParams(new RelativeLayout.LayoutParams(-1, -1));
         mTextureView.setSurfaceTextureListener(this);
 
-        mGLSurfaceView = new CameraRecordGLSurfaceView(this);
-        mGLSurfaceView.setOnSurfaceCreate(new CameraGLSurfaceView.OnSurfaceCreate() {
-            @Override
-            public void onSurfaceCreate() {
-//                CameraInstance cameraInstance = CameraInstance.getInstance();
-//                cameraInstance.tryOpenCamera(null);
-//                cameraInstance.stopPreview();
-//                cameraInstance.startPreview(mGLSurfaceView.getSurfaceTexture());
-
+//        mGLSurfaceView = new CameraRecordGLSurfaceView(this);
+//        mGLSurfaceView.setOnSurfaceCreate(new CameraGLSurfaceView.OnSurfaceCreate() {
+//            @Override
+//            public void onSurfaceCreate() {
+////                CameraInstance cameraInstance = CameraInstance.getInstance();
+////                cameraInstance.tryOpenCamera(null);
+////                cameraInstance.stopPreview();
+////                cameraInstance.startPreview(mGLSurfaceView.getSurfaceTexture());
+//
+//
+//
 //                rootLayout.postDelayed(new Runnable() {
 //                    @Override
 //                    public void run() {
-//                        RecorderThread.e("setOnSurfaceCreate-->OnSurfaceCreate");
-//                        CameraInstance cameraInstance = CameraInstance.getInstance();
-//                        cameraInstance.stopPreview();
-//                        cameraInstance.startPreview(mGLSurfaceView.getSurfaceTexture());
-//
-////                        RecorderThread.startThread(mGLSurfaceView.getSurfaceTexture());
+//                        RecorderThread2.e("setOnSurfaceCreate-->OnSurfaceCreate");
+////                        CameraInstance cameraInstance = CameraInstance.getInstance();
+////                        cameraInstance.stopPreview();
+////                        cameraInstance.startPreview(mGLSurfaceView.getSurfaceTexture());
+////
+//////                        RecorderThread2.startThread(mGLSurfaceView.getSurfaceTexture());
+////                        mCameraInstance.stopPreview();
+////                        mCameraInstance.startPreview(mGLSurfaceView.getSurfaceTexture());
 //                    }
-//                }, 1000);
-            }
-        });
+//                }, 800);
+//            }
+//        });
 
-        mFrameLayout.addView(mGLSurfaceView, new FrameLayout.LayoutParams(-1, -1));
+//        mFrameLayout.addView(mGLSurfaceView, new FrameLayout.LayoutParams(-1, -1));
         rootLayout = findViewById(R.id.rootLayout);
 
-        mCameraInstance = CameraInstance.getInstance();
-        mCameraInstance.tryOpenCamera(null);
+//        mCameraInstance = CameraInstance.getInstance();
+//        mCameraInstance.tryOpenCamera(null);
     }
 
     public void startActivity(View view) {
         TestActivity.show(this);
     }
 
+    public void takePicture(View view) {
+        RecorderThread2.takePhoto();
+    }
+
     public void switchPreview(View view) {
 //        new Thread(new Runnable() {
 //            @Override
 //            public void run() {
-        RecorderThread.e("switchPreview-->run");
+        RecorderThread2.e("switchPreview-->run");
 
         final SurfaceTexture surfaceTexture;
         int degrees;
@@ -113,7 +120,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
 ////                                surfaceTexture.updateTexImage();
 ////                            }
 ////                        });
-//                RecorderThread.startThread(surfaceTexture);
+//                RecorderThread2.startThread(surfaceTexture);
             }
         }, 100);
 //            }
@@ -121,7 +128,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
     }
 
     public void exit(View view) {
-        RecorderThread.exitThread();
+        RecorderThread2.exitThread();
         finish();
     }
 
@@ -148,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
 //                CameraInstance.getInstance().stopPreview();
 //                CameraInstance.getInstance().startPreview(surfaceTexture, finalDegrees);
 //                if (finalDegrees == 0) {
-//                    RecorderThread.startThread(surfaceTexture);
+//                    RecorderThread2.startThread(surfaceTexture);
 //                }
 //            }
 //        }, 1);
@@ -160,29 +167,35 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-        RecorderThread.e("onSurfaceTextureAvailable");
-        RecorderThread.startThread(surface, new RecorderThread.ISwitchPreview() {
+        RecorderThread2.e("onSurfaceTextureAvailable");
+        if (RecorderThread2.isRecordStart()) {
+            switchBlurPreview();
+        }
+
+        RecorderThread2.startThread(surface, new RecorderThread2.ISwitchPreview() {
             @Override
             public void onSwitchPreview() {
-                RecorderThread.e("onSwitchPreview:1");
+                RecorderThread2.e("onSwitchPreview:1");
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        RecorderThread.e("onSwitchPreview:2");
-                        if (mGLSurfaceView.getParent() == null) {
-                            RecorderThread.e("onSwitchPreview:addView");
-                            mFrameLayout.addView(mGLSurfaceView, new FrameLayout.LayoutParams(-1, -1));
-                        }
+                        RecorderThread2.e("onSwitchPreview:2");
+//                        if (mGLSurfaceView.getParent() == null) {
+//                            RecorderThread2.e("onSwitchPreview:addView");
+//                            mFrameLayout.addView(mGLSurfaceView, new FrameLayout.LayoutParams(-1, -1));
+//                        }
+//                        switchBlurPreview();
+
+                        CameraInstance.getInstance().startPreview(mGLSurfaceView.getSurfaceTexture());
                     }
                 });
-
             }
         });
 //        switchBlurPreview();
     }
 
     private void switchBlurPreview() {
-        RecorderThread.e("switchBlurPreview");
+        RecorderThread2.e("switchBlurPreview");
         CameraInstance.getInstance().stopPreview();
         CameraInstance.getInstance().startPreview(mGLSurfaceView.getSurfaceTexture());
     }
@@ -194,7 +207,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
 
     @Override
     public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-        RecorderThread.e("onSurfaceTextureDestroyed");
+        RecorderThread2.e("onSurfaceTextureDestroyed");
         return false;
     }
 

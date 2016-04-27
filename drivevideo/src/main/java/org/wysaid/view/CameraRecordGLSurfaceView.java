@@ -22,14 +22,31 @@ public class CameraRecordGLSurfaceView extends CameraGLSurfaceView {
             "@dynamic wave 0.5",       //可调节混合
     };
 
+    public CameraRecordGLSurfaceView(Context context) {
+        super(context, null);
+        init();
+    }
+
     public CameraRecordGLSurfaceView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init();
+    }
+
+    private void init() {
         postDelayed(new Runnable() {
             @Override
             public void run() {
-                setFilterWithConfig(effectConfigs[2]);
+                setBlur(true);
             }
         }, 100);
+    }
+
+    public void setBlur(boolean blur) {
+        if (blur) {
+            setFilterWithConfig(effectConfigs[2]);
+        } else {
+            setFilterWithConfig(effectConfigs[0]);
+        }
     }
 
     //Not provided by now.
