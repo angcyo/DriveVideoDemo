@@ -9,18 +9,15 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 
-import org.wysaid.camera.CameraInstance;
-
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
 
 /**
  * Created by robi on 2016-04-24 11:00.
  */
 @SuppressWarnings("deprecation")
-public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnInfoListener, MediaRecorder.OnErrorListener, Camera.PictureCallback, Camera.ShutterCallback {
+public class RecorderThread3 extends HandlerThread implements MediaRecorder.OnInfoListener, MediaRecorder.OnErrorListener, Camera.PictureCallback, Camera.ShutterCallback {
 
     public static final int MAX_DURATION = 10 * 1000;//最常录制时间
     public static final int MSG_START = 0x01;
@@ -29,53 +26,39 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     public static final int MSG_NO_PREVIEW = MSG_CAMERA_ERROR << 1;
     public static final int MSG_TAKE_PICTURE = MSG_NO_PREVIEW << 1;
     public static final int MSG_SWITCH_PREVIEW = MSG_TAKE_PICTURE << 1;
-    static RecorderThread2 mThread;
+    public static final int MSG_STOP_RECORDER = MSG_SWITCH_PREVIEW << 1;
+    public static final int MSG_RESTART_RECORDER = MSG_STOP_RECORDER << 1;
+    static RecorderThread3 mThread;
     Object lock = new Object();
     MediaRecorder mMediaRecorder;
     SurfaceTexture mSurfaceTexture;
     int takePictureCount = 0;
     boolean isMute = false;//拍照静音
-    ISwitchPreview mISwitchPreview;
-    boolean isStopPreview = false;
     boolean isSetPreview = false;
-    boolean isCallBack = false;
-    CameraInstance mCameraInstance;
+    Camera mCamera;
+    boolean isRecordStart = false;
     private Handler mHandler;
 
-    private RecorderThread2(String name, SurfaceTexture surface, ISwitchPreview switchPreview) {
+    private RecorderThread3(String name, Camera camera, SurfaceTexture surface) {
         super(name);
         this.mSurfaceTexture = surface;
-        if (surface != null) {
-            mCameraInstance = CameraInstance.getInstance();
-            mCameraInstance.tryOpenCamera(new CameraInstance.CameraOpenCallback() {
-                @Override
-                public void cameraReady() {
-                    mCameraInstance.getCameraDevice();
-                    start();
-                }
-            });
-
-//            mCamera = camera;
-//            try {
-//                mCamera.setPreviewTexture(surface);
-//                isSetPreview = true;
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
-
-        }
-        mISwitchPreview = switchPreview;
+        mCamera = camera;
+        start();
     }
 
 
-    public static void startThread(SurfaceTexture surface, ISwitchPreview switchPreview) {
+    public static void startThread(Camera camera, SurfaceTexture surface) {
+        if (camera == null || surface == null) {
+            e("startThread 失败,请检查参数");
+            return;
+        }
+
         if (mThread == null) {
-            synchronized (RecorderThread2.class) {
+            synchronized (RecorderThread3.class) {
                 if (mThread == null) {
-                    mThread = new RecorderThread2("RecorderThread", surface, switchPreview);
+                    mThread = new RecorderThread3("RecorderThread", camera, surface);
                 }
             }
-        } else {
         }
     }
 
@@ -84,7 +67,7 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     }
 
     public static void exitThread() {
-        synchronized (RecorderThread2.class) {
+        synchronized (RecorderThread3.class) {
             if (mThread != null) {
                 mThread.exit();
                 mThread = null;
@@ -95,6 +78,18 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     public static void takePhoto() {
         if (mThread != null) {
             mThread.mHandler.sendEmptyMessage(MSG_TAKE_PICTURE);
+        }
+    }
+
+    public static void stopMediaRecorder() {
+        if (mThread != null) {
+            mThread.mHandler.sendEmptyMessage(MSG_STOP_RECORDER);
+        }
+    }
+
+    public static void restartMediaRecorder() {
+        if (mThread != null) {
+            mThread.mHandler.sendEmptyMessage(MSG_RESTART_RECORDER);
         }
     }
 
@@ -112,7 +107,7 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
 
     public static String getFileName(String ext) {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("/storage/sdcard1/angcyo/");
+        stringBuilder.append("/storage/sdcard1/angcyo1/");
         stringBuilder.append(getTempFileName());
         stringBuilder.append(ext);
         String filePath = stringBuilder.toString();
@@ -141,7 +136,7 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     }
 
     private void takePictureCount(boolean increase) {
-        if (mCameraInstance != null && mCameraInstance.getCameraDevice() != null) {
+        if (mCamera != null) {
             if (takePictureCount == 0) {
                 startTakePicture();
             }
@@ -155,9 +150,9 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     private void startTakePicture() {
         try {
             if (isMute) {
-                mCameraInstance.getCameraDevice().takePicture(null, null, this);
+                mCamera.takePicture(null, null, this);
             } else {
-                mCameraInstance.getCameraDevice().takePicture(this, null, this);
+                mCamera.takePicture(this, null, this);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -168,7 +163,7 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
 
     private void exit() {
         releaseMediaRecorder();
-        releaseCamera();
+        //请手动释放camera
         quit();
     }
 
@@ -198,8 +193,22 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
         }
     }
 
-    private void releaseCamera() {
-        mCameraInstance.stopCamera();
+    private void stopRecorder() {
+        if (isRecordStart && mMediaRecorder != null) {
+            mMediaRecorder.reset();
+            if (mCamera != null) {
+                mCamera.stopPreview();
+            }
+            isSetPreview = false;
+            isRecordStart = false;
+            e("stopRecorder mMediaRecorder.reset()");
+        }
+    }
+
+    private void restartRecorder() {
+        if (!isRecordStart) {
+            restartRecorder(getVideoFileName());
+        }
     }
 
     private void initHandler() {
@@ -217,6 +226,12 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
                         break;
                     case MSG_SWITCH_PREVIEW:
                         break;
+                    case MSG_STOP_RECORDER:
+                        stopRecorder();
+                        break;
+                    case MSG_RESTART_RECORDER:
+                        restartRecorder();
+                        break;
                     default:
                         break;
                 }
@@ -230,44 +245,26 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     }
 
     private void restartRecorder(String filePath) {
+        isRecordStart = false;
+
         if (mMediaRecorder == null) {
             createMediaRecorder();
         }
-        Camera cameraDevice = mCameraInstance.getCameraDevice();
-//        if (cameraDevice != null) {
-//            try {
-//                e("camera reconnect");
-//                cameraDevice.reconnect();
-////                cameraDevice.unlock();
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
+        Camera cameraDevice = mCamera;
         mMediaRecorder.reset();
 
         if (cameraDevice == null) {
-            e("重试打开 camera");
-            mCameraInstance.tryOpenCamera(null);
-        }
-
-        if (cameraDevice == null) {
-            e("重试打开 camera 失败,终止录制");
-//            synchronized (lock) {
-//                try {
-//                    e("等待camera...");
-//                    lock.wait();
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//            }
+            e(" camera == null, 终止录制");
             return;
         }
 
         if (!isSetPreview) {
             try {
+                cameraDevice.stopPreview();
+                cameraDevice.setDisplayOrientation(0);
                 cameraDevice.setPreviewTexture(mSurfaceTexture);
                 isSetPreview = true;
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
@@ -281,7 +278,7 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
 
         mMediaRecorder.setProfile(mProfile);
-//
+
         mMediaRecorder.setOutputFile(filePath);
         mMediaRecorder.setMaxDuration(MAX_DURATION);
         mMediaRecorder.setOnInfoListener(this);
@@ -290,74 +287,20 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
         try {
             mMediaRecorder.prepare();
             mMediaRecorder.start();
+            isRecordStart = true;
             e("重新 开始录制:" + filePath);
-
-            if (mISwitchPreview != null && !isCallBack) {
-                mISwitchPreview.onSwitchPreview();
-                isCallBack = true;
-            }
         } catch (Exception e) {
             e("重新 录制失败:" + e.getMessage());
             e.printStackTrace();
             mHandler.sendEmptyMessage(MSG_ERROR);
         }
-
-        if (!isStopPreview) {
-            cameraDevice.stopPreview();
-            isStopPreview = true;
-        }
     }
-
-//    private void openCamera(int cameraId) throws Exception {
-//        if (mCamera != null) {
-//            return;
-//        }
-//        Camera camera = Camera.open(cameraId);
-//        Camera.Parameters parameters = camera.getParameters();
-//        parameters.setFlashMode("off");
-//        parameters.setWhiteBalance(Camera.Parameters.WHITE_BALANCE_AUTO);
-//        parameters.setSceneMode(Camera.Parameters.SCENE_MODE_AUTO);
-//        int width, height;
-//        width = 1920;
-//        height = 1080;
-//        parameters.setPreviewSize(width, height);
-//        parameters.setPictureSize(width, height);
-////            this.mCamera.setDisplayOrientation(90);
-////        mCameraPreviewCallback = new CameraPreviewCallback();
-////        mCamera.addCallbackBuffer(mImageCallbackBuffer);
-////        mCamera.setPreviewCallbackWithBuffer(mCameraPreviewCallback);
-////            mCamera.setPreviewCallback(mCameraPreviewCallback);
-//        List<String> focusModes = parameters.getSupportedFocusModes();
-//        if (focusModes.contains("continuous-video")) {
-//            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
-//        }
-//        camera.setParameters(parameters);
-//        try {
-//            if (mSurfaceTexture != null) {
-//                camera.setPreviewTexture(mSurfaceTexture);
-//            } else if (mSurfaceHolder != null) {
-//                camera.setPreviewDisplay(mSurfaceHolder);
-//            } else {
-//                mHandler.sendEmptyMessage(MSG_NO_PREVIEW);
-//            }
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            mHandler.sendEmptyMessage(MSG_ERROR);
-//            return;
-//        }
-//
-//        mCamera = camera;
-//    }
 
     @Override
     public void onInfo(MediaRecorder mr, int what, int extra) {
         e("onInfo " + what + " " + extra);
         if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_DURATION_REACHED) {
-//            e("MEDIA_RECORDER_INFO_MAX_DURATION_REACHED");
-            mMediaRecorder.stop();
-            mCameraInstance.getCameraDevice().stopPreview();
             restartRecorder(getVideoFileName());
-//            mHandler.sendMessage(mHandler.obtainMessage(1001));
         }
     }
 
@@ -381,9 +324,5 @@ public class RecorderThread2 extends HandlerThread implements MediaRecorder.OnIn
     @Override
     public void onShutter() {
         e("onShutter");
-    }
-
-    public interface ISwitchPreview {
-        void onSwitchPreview();
     }
 }

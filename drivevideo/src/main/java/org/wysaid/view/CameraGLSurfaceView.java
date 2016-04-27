@@ -40,7 +40,7 @@ public class CameraGLSurfaceView extends GLSurfaceView implements GLSurfaceView.
     public int maxPreviewHeight = 480;
     public ClearColor clearColor;
     protected int mRecordWidth = 1920;
-    protected int mRecordHeight = 846;//控制大小
+    protected int mRecordHeight = 480;//控制大小
     protected SurfaceTexture mSurfaceTexture;
     protected int mTextureID;
     protected CGEFrameRenderer mFrameRecorder;
@@ -202,7 +202,7 @@ public class CameraGLSurfaceView extends GLSurfaceView implements GLSurfaceView.
 
     @Override
     public void onDrawFrame(GL10 gl) {
-//        Log.i(LOG_TAG, "onDrawFrame---------");
+//        Log.v(LOG_TAG, "onDrawFrame---------");
 
         if (mSurfaceTexture == null || !cameraInstance().isPreviewing()) {
             //防止双缓冲情况下最后几帧抖动

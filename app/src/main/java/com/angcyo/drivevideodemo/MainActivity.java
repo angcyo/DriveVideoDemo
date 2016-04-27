@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity implements TextureView.Surfa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mFrameLayout = (FrameLayout) findViewById(R.id.frameLayout);
+//        mFrameLayout = (FrameLayout) findViewById(R.id.frameLayout);
 //        mGLSurfaceView = (CameraRecordGLSurfaceView) findViewById(R.id.glSurfaceView);
 //        mGLSurfaceView.setOnSurfaceCreate(new CameraGLSurfaceView.OnSurfaceCreate() {
 //            @Override
